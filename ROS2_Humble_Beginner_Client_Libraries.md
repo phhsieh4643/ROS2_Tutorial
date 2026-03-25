@@ -316,7 +316,7 @@ class MinimalSubscriber(Node):
         super().__init__('minimal_subscriber')
         # 解答 1 & 2
         self.subscription = self.create_subscription(String, 'topic', self.listener_callback, 10)
-        self.subscription
+        self.subscription  # 防止 unused variable 警告
 
     # 解答 3
     def listener_callback(self, msg):
@@ -336,6 +336,14 @@ if __name__ == '__main__':
     main()
 ```
 </details>
+
+#### 💡 補充：為什麼要多寫一行 `self.subscription`？
+
+在 Python 的 `__init__` 中，你會看到最後一行寫了 `self.subscription`（變數名稱直接寫在一行）。這是官方推薦的作法，主要有兩個原因：
+1.  **防止 Linter (靜態代碼檢查) 警告**：如果你使用 VS Code 的 Pylance、Ruff 或 Flake8，它們會檢查變數是否「被定義但未被讀取」。雖然訂閱者在後台運行，但在 `__init__` 中沒有其他地方會讀取這個變數，報錯器會噴出黃色警告。寫這一行能明確告訴系統：「我正在使用這個變數」。
+2.  **與 C++ 實作範例對齊**：在 C++ 版本中，為了避免 GCC 編譯器報錯 (Unused Variable)，官方範例會使用 `(void)subscription_;`。Python 的教程為了保持結構上的一致性，也保留了這個習慣。
+
+事實上，只要你有將其宣告為 `self.subscription`（類別屬性），物件就不會被回收。即使刪掉這一行，訂閱功能依然能正常運作。
 
 #### ⚠️ 重點：Python 設定檔更新 (`package.xml` & `setup.py`)
 寫完程式後，系統還不知道你的程式需要哪些依賴，也不知道如何執行它們。
