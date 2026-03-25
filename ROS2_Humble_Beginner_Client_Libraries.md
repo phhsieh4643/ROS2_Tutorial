@@ -335,7 +335,6 @@ def main(args=None):
 if __name__ == '__main__':
     main()
 ```
-</details>
 
 #### 💡 補充：為什麼要多寫一行 `self.subscription`？
 
@@ -344,6 +343,9 @@ if __name__ == '__main__':
 2.  **與 C++ 實作範例對齊**：在 C++ 版本中，為了避免 GCC 編譯器報錯 (Unused Variable)，官方範例會使用 `(void)subscription_;`。Python 的教程為了保持結構上的一致性，也保留了這個習慣。
 
 事實上，只要你有將其宣告為 `self.subscription`（類別屬性），物件就不會被回收。即使刪掉這一行，訂閱功能依然能正常運作。
+
+</details>
+
 
 #### ⚠️ 重點：Python 設定檔更新 (`package.xml` & `setup.py`)
 寫完程式後，系統還不知道你的程式需要哪些依賴，也不知道如何執行它們。
