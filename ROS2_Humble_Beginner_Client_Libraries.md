@@ -367,7 +367,7 @@ if __name__ == '__main__':
        ],
    },
    ```
-*(修改完畢後，記得回到工作空間根目錄執行 `colcon build`！)*
+*(修改完畢後，請參閱本章節末尾的 [4.3 編譯與執行測試](#43-編譯與執行測試-build--run)！)*
 
 ---
 
@@ -521,7 +521,40 @@ int main(int argc, char * argv[])
      listener
      DESTINATION lib/${PROJECT_NAME})
    ```
-*(修改完畢後，記得回到工作空間根目錄執行 `colcon build`！)*
+
+### 4.3 編譯與執行測試 (Build & Run)
+
+在完成程式碼撰寫與設定檔 (`package.xml`, `setup.py` / `CMakeLists.txt`) 修改後，請依照以下步驟進行編譯與測試。
+
+#### 1. 編譯套件
+回到工作空間根目錄執行 `colcon build`。建議使用 `--packages-select` 以節省時間。
+```bash
+cd ~/ros2_ws
+# 若測試 Python 版本：
+colcon build --packages-select py_test_pkg
+
+# 若測試 C++ 版本：
+colcon build --packages-select cpp_test_pkg
+```
+
+#### 2. 載入環境
+每次編譯完或是開啟新的終端機後，都必須載入環境設定。
+```bash
+source install/setup.bash
+```
+
+#### 3. 啟動節點測試
+開啟兩個終端機（記得都要在各自的終端機執行 `source install/setup.bash`），分別執行發布者與訂閱者。
+
+**測試 Python 版本：**
+*   **終端機 1 (Talker)**: `ros2 run py_test_pkg talker`
+*   **終端機 2 (Listener)**: `ros2 run py_test_pkg listener`
+
+**測試 C++ 版本：**
+*   **終端機 1 (Talker)**: `ros2 run cpp_test_pkg talker`
+*   **終端機 2 (Listener)**: `ros2 run cpp_test_pkg listener`
+
+*💡 提示：若使用 Python 開發，在編譯時可以加入 `--symlink-install`，這樣你之後修改 `.py` 檔案時不需重新編譯即可直接執行（source 仍可能需要）。*
 
 ---
 
