@@ -10,6 +10,66 @@
 
 你可以透過 Windows 終端機 (PowerShell 或命令提示字元) 來操作 WSL：
 
+### 1.0 WSL 安裝與 Ubuntu 22.04 步驟指南
+
+在開始安裝 ROS 2 之前，請先確認系統為 Windows 10 版本 2004 以上（Build 19041+）或 Windows 11，並且已啟用虛擬化。
+
+#### 步驟 1：以系統管理員模式開啟 PowerShell
+1. 在 Windows 開始選單中輸入 `PowerShell`。
+2. 右鍵「Windows PowerShell」，選擇「以系統管理員身分執行」。
+
+#### 步驟 2：啟用 WSL
+```powershell
+wsl --install
+```
+此指令會依序啟用 Hyper-V、虛擬機平台、並從 Microsoft Store 安裝預設 Ubuntu。完成後会要求重啟電腦。
+
+#### 步驟 3：選擇 Ubuntu 版本（標準為 22.04）
+預設安裝為 Ubuntu 22.04 LTS。若要指定版本：
+```powershell
+wsl --install -d Ubuntu-22.04
+```
+如果你想改為 20.04，請改為：
+```powershell
+wsl --install -d Ubuntu-20.04
+```
+
+#### 步驟 4：重啟電腦並啟動 Ubuntu
+重啟完成後，在開始選單打開「Ubuntu 22.04」，系統會要求建立 Linux 使用者與密碼。
+
+#### 步驟 5：更新 Ubuntu 軟體套件
+在 Ubuntu 22.04 終端機中執行：
+```bash
+sudo apt update && sudo apt upgrade -y
+```
+
+#### 步驟 6：確認 WSL 版本為 2
+在 PowerShell（系統管理員）中執行：
+```powershell
+wsl -l -v
+```
+若已是 WSL 1 可執行：
+```powershell
+wsl --set-version Ubuntu-22.04 2
+```
+
+#### 步驟 7：設定預設發行版（可選）
+```powershell
+wsl --set-default Ubuntu-22.04
+```
+
+#### 步驟 8：核對 Ubuntu 版本
+在 Ubuntu 終端機執行：
+```bash
+lsb_release -a
+```
+應顯示 `Ubuntu 22.04`。
+
+----
+
+### 1.2 WSL 實用技巧與疑難排解
+
+
 **安裝與啟動**
 * `wsl --install`：安裝 WSL 和預設的 Linux 發行版（通常是 Ubuntu）。
 * `wsl`：啟動預設的 Linux 發行版。
