@@ -375,41 +375,62 @@ if __name__ == '__main__':
 **發布者 (Publisher)：** 放於 `cpp_test_pkg/src/` 下的 `publisher_member_function.cpp`。
 
 ```cpp
-#include <chrono>
-#include <functional>
-#include <memory>
-#include <string>
-#include "rclcpp/rclcpp.hpp"
-#include "std_msgs/msg/string.hpp"
+#include <chrono>       // C++ 標準庫：處理時間單位 (如 500ms)
+#include <functional>   // C++ 標準庫：提供 std::bind 綁定函式
+#include <memory>       // C++ 標準庫：提供智慧指標 (SharedPtr)
+#include <string>       // C++ 標準庫：處理字串 (std::string)
+#include "rclcpp/rclcpp.hpp"           // ROS 2 核心 C++ 客戶端程式庫
+#include "std_msgs/msg/string.hpp"      // 引用標準訊息類型中的 String 格式
 
+// 允許使用時間字面量，例如直接寫 500ms 或 1s
 using namespace std::chrono_literals;
 
+/* 建立一個繼承自 rclcpp::Node 的類別 */
 class MinimalPublisher : public rclcpp::Node
 {
   public:
+    // 建構子：初始化節點名稱為 "minimal_publisher"，計數器 count_ 設為 0
     MinimalPublisher() : Node("minimal_publisher"), count_(0)
     {
+      // 1. 建立發布者：指定訊息類型為 <std_msgs::msg::String>，主題名稱為 "topic"，Queue Size 為 10
       publisher_ = this->create_publisher<std_msgs::msg::String>("topic", 10);
+
+      // 2. 建立定時器：每 500ms 執行一次 timer_callback 函式
+      // std::bind 用於將類別內的成員函式綁定給定時器使用
       timer_ = this->create_wall_timer(500ms, std::bind(&MinimalPublisher::timer_callback, this));
     }
 
   private:
+    // 定時器觸發後執行的回呼函式 (Callback Function)
     void timer_callback()
     {
+      // 3. 建立並填充訊息內容
       auto message = std_msgs::msg::String();
       message.data = "Hello, world! " + std::to_string(count_++);
+
+      // 4. 在終端機印出 Log 訊息，方便除錯
       RCLCPP_INFO(this->get_logger(), "Publishing: '%s'", message.data.c_str());
+
+      // 5. 正式發布訊息到主題上
       publisher_->publish(message);
     }
-    rclcpp::TimerBase::SharedPtr timer_;
-    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;
-    size_t count_;
+
+    // 變數宣告：使用 SharedPtr (智慧指標) 以確保自動管理記憶體
+    rclcpp::TimerBase::SharedPtr timer_;                               // 定時器物件
+    rclcpp::Publisher<std_msgs::msg::String>::SharedPtr publisher_;    // 發布者物件
+    size_t count_;                                                     // 計數器
 };
 
 int main(int argc, char * argv[])
 {
+  // 1. 初始化 ROS 2 通訊系統
   rclcpp::init(argc, argv);
+
+  // 2. 建立節點物件並進入「旋轉 (Spin)」狀態，開始監聽定時器或事件
+  // std::make_shared 會在堆疊中安全地建立節點實例
   rclcpp::spin(std::make_shared<MinimalPublisher>());
+
+  // 3. 關閉系統資源
   rclcpp::shutdown();
   return 0;
 }
