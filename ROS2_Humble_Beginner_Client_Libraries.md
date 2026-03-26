@@ -1059,99 +1059,112 @@ ros2 run more_interfaces publish_address_book
 
 ## 8. 在類別中使用參數 (Using Parameters in a class)
 
-**觀念解說：**
-參數 (Parameters) 是節點的動態設定值。透過程式碼宣告參數，我們可以讓使用者在啟動節點時去改變程式的行為，而不需要重新編譯原始碼。
+**情境引入 (Why)：**
+想像你正在開發一台送餐機器人。在空曠的走廊，最高時速可以跑 `1.0 m/s`；但如果進入人多的用餐區，經理希望能在**不修改程式碼、不重新啟動機器人**的情況下，直接把最高速限降到 `0.5 m/s`。
+這時候，我們就會把「最高速限 (`max_speed`)」設計成一個 **參數 (Parameter)**。
 
-這個單元不僅會教你如何「讀取」參數，還會教你如何在程式中動態「覆寫」參數，以及如何透過 Launch 檔來一次設定好所有參數。
+這個單元將帶你從零建立套件，在程式中宣告參數，並透過指令或 Launch 檔動態「覆寫」它。
 
-### 🐍 8.1 Python 實作
-建立一個名為 `python_parameters` 的套件，並撰寫以下節點：
+---
 
+### 🐍 8.1 Python 實作流程：限速器節點
+
+#### Step 1: 建立 Python 套件與預設節點
+開啟終端機，進入你的工作空間並建立名為 `python_parameters` 的套件：
+```bash
+cd ~/ros2_ws/src
+ros2 pkg create --build-type ament_python --license Apache-2.0 --node-name speed_limiter python_parameters
+```
+
+#### Step 2: 撰寫程式碼
+打開 `~/ros2_ws/src/python_parameters/python_parameters/speed_limiter.py`，將內容替換為以下程式碼：
 ```python
 import rclpy
-import rclpy.node
+from rclpy.node import Node
+from rcl_interfaces.msg import ParameterDescriptor
 
-class MinimalParam(rclpy.node.Node):
+class SpeedLimiterNode(Node):
     def __init__(self):
-        super().__init__('minimal_param_node')
+        super().__init__('speed_limiter')
         
-        # 1. (選用) 加入參數描述 (ParameterDescriptor)
-        # 這樣當別人用 ros2 param describe 指令時，就能看到這個參數的用途說明
-        from rcl_interfaces.msg import ParameterDescriptor
-        my_desc = ParameterDescriptor(description='這是我的專屬字串參數！')
+        # 1. 建立參數描述 (選用，但推薦)
+        # 讓其他使用者知道這個參數的用途
+        my_desc = ParameterDescriptor(description='機器人的最高移動速限 (m/s)')
         
-        # 2. 宣告參數：(參數名稱, 預設值, 參數描述物件)
-        # 系統會從預設值 'world' 自動推斷出這個參數是 String 型態
-        self.declare_parameter('my_parameter', 'world', my_desc)
+        # 2. 宣告參數：(參數名稱, 預設值, 描述)
+        # 系統會從預設值 '1.0' 自動推斷出這個參數是浮點數 (Double) 型態
+        self.declare_parameter('max_speed', 1.0, my_desc)
 
-        # 3. 建立計時器，每 1 秒讀取並印出參數值
+        # 3. 建立計時器，每 1 秒讀取並印出當前限速
         self.timer = self.create_timer(1.0, self.timer_callback)
 
     def timer_callback(self):
-        # 4. 取得參數的當前值
-        my_param = self.get_parameter('my_parameter').get_parameter_value().string_value
+        # 4. 取得參數的當前值 (加上 .double_value 確保型態正確)
+        current_speed_limit = self.get_parameter('max_speed').get_parameter_value().double_value
         
-        self.get_logger().info('Hello %s!' % my_param)
-        
-        # 5. 在程式內動態重設(寫入)參數值
-        # 這裡我們強制把它設回 'world'。這樣即使使用者從外部用指令修改了參數，下一秒又會被改回來
-        my_new_param = rclpy.parameter.Parameter(
-            'my_parameter',
-            rclpy.Parameter.Type.STRING,
-            'world'
-        )
-        all_new_parameters = [my_new_param]
-        self.set_parameters(all_new_parameters)
+        # 印出狀態
+        self.get_logger().info('目前最高限速設定為: %.2f m/s' % current_speed_limit)
 
 def main():
     rclpy.init()
-    node = MinimalParam()
+    node = SpeedLimiterNode()
     rclpy.spin(node)
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
 ```
 
-### ⚙️ 8.2 C++ 實作
-建立一個名為 `cpp_parameters` 的套件，並撰寫以下節點：
+#### Step 3: 更新設定檔 (`package.xml` & `setup.py`)
+為了讓系統能順利編譯與執行，請確認設定檔：
+1. **`package.xml`**：確保有 `<exec_depend>rclpy</exec_depend>`。
+2. **`setup.py`**：因為我們剛才使用 `--node-name` 指令，系統應該已經幫你在 `entry_points` 裡寫好 `'speed_limiter = python_parameters.speed_limiter:main'` 了，確認有這行即可。
 
+---
+
+### ⚙️ 8.2 C++ 實作流程：限速器節點
+
+#### Step 1: 建立 C++ 套件與預設節點
+如果你想練習 C++，請開終端機執行：
+```bash
+cd ~/ros2_ws/src
+ros2 pkg create --build-type ament_cmake --license Apache-2.0 --node-name speed_limiter cpp_parameters
+```
+
+#### Step 2: 撰寫程式碼
+打開 `~/ros2_ws/src/cpp_parameters/src/speed_limiter.cpp`，替換為以下程式碼：
 ```cpp
 #include <chrono>
-#include <functional>
 #include <string>
 #include <rclcpp/rclcpp.hpp>
 
 using namespace std::chrono_literals;
 
-class MinimalParam : public rclcpp::Node
+class SpeedLimiterNode : public rclcpp::Node
 {
 public:
-  MinimalParam() : Node("minimal_param_node")
+  SpeedLimiterNode() : Node("speed_limiter")
   {
-    // 1. (選用) 建立參數描述物件
+    // 1. 建立參數描述
     auto param_desc = rcl_interfaces::msg::ParameterDescriptor{};
-    param_desc.description = "This parameter is mine!";
+    param_desc.description = "機器人的最高移動速限 (m/s)";
 
-    // 2. 宣告參數，名稱為 "my_parameter"，預設值為 "world"，並附上描述
-    this->declare_parameter("my_parameter", "world", param_desc);
+    // 2. 宣告參數，名稱為 "max_speed"，預設值為 1.0
+    this->declare_parameter("max_speed", 1.0, param_desc);
 
     // 3. 建立計時器
     timer_ = this->create_wall_timer(
-      1000ms, std::bind(&MinimalParam::timer_callback, this));
+      1000ms, std::bind(&SpeedLimiterNode::timer_callback, this));
   }
 
 private:
   void timer_callback()
   {
-    // 4. 取得參數值，並轉型為字串
-    std::string my_param = this->get_parameter("my_parameter").as_string();
+    // 4. 取得參數值，並轉型為 double (浮點數)
+    double current_speed_limit = this->get_parameter("max_speed").as_double();
 
-    RCLCPP_INFO(this->get_logger(), "Hello %s!", my_param.c_str());
-
-    // 5. 動態重設參數值
-    // 建立一個 Parameter 物件陣列，並透過 set_parameters 強制寫入
-    std::vector<rclcpp::Parameter> all_new_parameters{rclcpp::Parameter("my_parameter", "world")};
-    this->set_parameters(all_new_parameters);
+    // 印出狀態
+    RCLCPP_INFO(this->get_logger(), "目前最高限速設定為: %.2f m/s", current_speed_limit);
   }
   rclcpp::TimerBase::SharedPtr timer_;
 };
@@ -1159,17 +1172,67 @@ private:
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<MinimalParam>());
+  rclcpp::spin(std::make_shared<SpeedLimiterNode>());
   rclcpp::shutdown();
   return 0;
 }
 ```
 
-### 🚀 8.3 透過 Launch 檔啟動並注入參數 (進階必學)
+#### Step 3: 更新設定檔 (`CMakeLists.txt`)
+因為 C++ 需要編譯，打開 `CMakeLists.txt`，確保有宣告依賴：
+```cmake
+find_package(rclcpp REQUIRED)
 
-每次啟動節點都要手動用 `ros2 param set` 修改參數太麻煩了。在實務上，我們會撰寫一個 Python 的 `Launch` 檔，在啟動節點的同時就把參數「塞」進去。
+# 系統應該已自動生成這幾行
+add_executable(speed_limiter src/speed_limiter.cpp)
+ament_target_dependencies(speed_limiter rclcpp)
 
-1. 在你的套件目錄下建立一個 `launch` 資料夾，並在裡面建立 `parameters_launch.py`：
+install(TARGETS speed_limiter DESTINATION lib/${PROJECT_NAME})
+```
+
+---
+
+### 🔨 8.3 編譯與載入環境 (Build & Source)
+
+無論你寫了 Python 還是 C++（或兩者都寫了），現在我們回到工作空間根目錄進行編譯：
+
+```bash
+cd ~/ros2_ws
+
+# 指定只編譯我們剛剛建好的套件 (節省時間)
+colcon build --packages-select python_parameters cpp_parameters
+
+# 載入最新的環境設定 (極度重要！每次編譯完都要執行)
+source install/setup.bash
+```
+
+---
+
+### 🎮 8.4 終端機實戰驗證 (動態修改參數)
+
+編譯完成後，我們可以來測試參數的威力了！
+
+1. **開啟節點**：
+   ```bash
+   # 若執行 Python 版：
+   ros2 run python_parameters speed_limiter
+   ```
+   *你會看到終端機不斷印出：「目前最高限速設定為: 1.00 m/s」。*
+
+2. **動態修改參數 (重點！)**：
+   **不要關閉**原本的終端機，開啟「第二個終端機」，模擬餐廳經理下達減速指令：
+   ```bash
+   ros2 param set /speed_limiter max_speed 0.5
+   ```
+   *這時你切回第一個終端機，會發現它在沒有重新啟動的情況下，印出的訊息直接變成：「目前最高限速設定為: 0.50 m/s」！這就是 Parameter 的強大之處。*
+
+---
+
+### 🚀 8.5 透過 Launch 檔啟動並注入參數 (進階必學)
+
+實務上，我們不可能每次開機都手動去打 `ros2 param set`。我們會撰寫一個 Python 的 `Launch` 檔，在啟動節點的瞬間就把參數「塞」進去。
+
+1. 在你的套件目錄下建立一個 `launch` 資料夾，並在裡面建立 `robot_bringup_launch.py`：
 
 ```python
 from launch import LaunchDescription
@@ -1178,21 +1241,22 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package='你的套件名稱',  # 例如: 'cpp_parameters' 或 'python_parameters'
-            executable='你的執行檔名稱', # 例如: 'minimal_param_node'
-            name='custom_minimal_param_node',
+            package='python_parameters',  # 替換成你的套件名稱 (C++ 則是 cpp_parameters)
+            executable='speed_limiter',   # 你的執行檔名稱
+            name='custom_speed_limiter',
             output='screen',
             emulate_tty=True,
-            # 在這裡注入參數值！
+            
+            # 👇 在這裡注入參數值！(例如將預設的 1.0 改為 0.3)
             parameters=[
-                {'my_parameter': 'earth'}
+                {'max_speed': 0.3}
             ]
         )
     ])
 ```
 
 2. **(極度重要) 設定檔更新：讓系統安裝 Launch 檔**
-如果你沒有做這一步，系統編譯後會找不到你的 Launch 檔！
+如果你沒有做這一步，執行 `colcon build` 後系統會找不到你的 Launch 檔！
 
 * **對於 Python 套件 (`setup.py`)**：
     加入以下 import 語法，並在 `data_files` 陣列中新增一行：
@@ -1220,10 +1284,12 @@ def generate_launch_description():
     )
     ```
 
-編譯完成後，你就可以用這行指令啟動節點，並看到終端機印出 `Hello earth!`（因為參數被 Launch 檔成功覆寫了）！
+3. **重新編譯並啟動**：
+請再次執行 `colcon build` 與 `source install/setup.bash`。接著使用 Launch 檔啟動：
 ```bash
-ros2 launch <你的套件名稱> parameters_launch.py
+ros2 launch python_parameters robot_bringup_launch.py
 ```
+你會發現終端機一啟動，印出來的速度直接就是 `0.30 m/s` 了！未來在控制 TurtleBot3 的 SLAM 演算法時，我們就會大量使用 Launch 檔來載入各種雷達與地圖的參數設定。
 
 ---
 
