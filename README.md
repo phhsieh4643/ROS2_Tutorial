@@ -138,6 +138,7 @@ colcon build
 - Beginner: CLI Tools 系列教學
 - Beginner: Client Libraries 系列教學
 - [ROS 2 Humble 影片教學播放清單](https://www.youtube.com/playlist?list=PLLSegLrePWgJudpPUof4-nVFHGkB62Izy)
+- [TurtleBot3(ROS2)-Humble 線上手冊 Archives - 採智科技網站v2](https://idminer.com.tw/docs-category/emanual-tb3-humble/)
 
 ---
 
