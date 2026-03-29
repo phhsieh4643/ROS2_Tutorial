@@ -1,0 +1,7 @@
+# Request (經理送出的任務請求)
+int32 table_number
+string food_name
+---
+# Response (機器人回傳的接單結果)
+bool success
+string estimated_time

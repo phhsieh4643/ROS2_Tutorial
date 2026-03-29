@@ -1,0 +1,24 @@
+# --- ROS 2 Core ---
+**/build/
+**/install/
+**/log/
+
+# --- Python ---
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.pytest_cache/
+**/.mypy_cache/
+*.egg-info/
+
+# --- IDEs & Editors ---
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# --- OS specific ---
+Thumbs.db
+desktop.ini

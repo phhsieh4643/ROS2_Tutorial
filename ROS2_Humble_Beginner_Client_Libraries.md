@@ -123,8 +123,13 @@ mkdir -p ~/ros2_ws/src
 * **所在位置**：必須在工作空間根目錄 (`~/ros2_ws`)
 ```bash
 cd ~/ros2_ws
-colcon build
+# ⭐ 建議使用以下進階指令進行編譯
+colcon build --symlink-install --merge-install
 ```
+> 💡 **為什麼建議這樣下指令？** (詳見 3.5.2 章節)
+> * `--symlink-install`: 讓 Python 程式碼與 Launch 檔修改後即刻生效。
+> * `--merge-install`: 將所有套件安裝在同一個層級，讓路徑更簡潔。
+
 *(執行後，系統會自動在 `ros2_ws` 內生成 `build/`、`install/`、`log/` 三個資料夾)*
 
 **Step 3: 載入環境設定 (Source)**
@@ -270,11 +275,16 @@ ros2 run py_test_pkg my_node
     ```bash
     colcon build --packages-select <your_package_name>
     ```
-*   **軟連結安裝 (Symlink Install)**：(開發 Python 與 Launch 檔時強烈建議)
+*   **專業開發者黃金指令** (強烈建議啟動)：
     ```bash
-    colcon build --symlink-install
+    colcon build --symlink-install --merge-install
     ```
-    *💡 提示：使用此參數後，當你修改 Python 程式碼或 Launch 檔時，不需重新編譯即可生效（C++ 仍需重新編譯）。*
+    *💡 **參數詳細原因解說：***
+    *   **`--symlink-install` (軟連結安裝)**：
+        在預設情況下，`colcon` 會將你的 Python 檔、Launch 檔「複製」一份到 `install/` 資料夾。如果你改了程式碼，就必須重新編譯。加上這個參數後，系統會改用「捷徑 (Symlink)」指向你的原始碼路徑。因此，**修改 Python 或 Launch 檔後，不需重新編譯即可生效**（注意：C++ 仍需重新編譯，因為機器碼必須重新產生）。
+    *   **`--merge-install` (合併安裝)**：
+        ROS 2 預設會為每個套件在 `install/` 下建立獨立資料夾。當套件變多時，環境變數 (PATH) 會變得非常冗長。此參數會將所有套件的執行檔、資源檔合併放在同一個 `lib`、`share` 資料夾下，讓系統搜尋檔案更有效率，也能避免某些環境下的路徑長度限制問題。
+
     
 *   **編譯單個套件及其所有依賴**：
     ```bash
@@ -1345,17 +1355,23 @@ int main(int argc, char ** argv)
 }
 ```
 
-#### Step 3: 更新設定檔 (`CMakeLists.txt`)
-因為 C++ 需要編譯，打開 `CMakeLists.txt`，確保有宣告依賴：
-```cmake
-find_package(rclcpp REQUIRED)
+#### Step 3: 更新設定檔 (`package.xml` & `CMakeLists.txt`)
+1. **更新 `package.xml`**：加入依賴。
+   ```xml
+   <depend>rclcpp</depend>
+   ```
 
-# 系統應該已自動生成這幾行
-add_executable(speed_limiter src/speed_limiter.cpp)
-ament_target_dependencies(speed_limiter rclcpp)
+2. **更新 `CMakeLists.txt`**：因為 C++ 需要編譯，打開 `CMakeLists.txt`，確保有宣告依賴並連結：
+   ```cmake
+   find_package(rclcpp REQUIRED)
 
-install(TARGETS speed_limiter DESTINATION lib/${PROJECT_NAME})
-```
+   # 增加執行檔並連結
+   add_executable(speed_limiter src/speed_limiter.cpp)
+   ament_target_dependencies(speed_limiter rclcpp)
+
+   install(TARGETS speed_limiter DESTINATION lib/${PROJECT_NAME})
+   ```
+
 
 ---
 
