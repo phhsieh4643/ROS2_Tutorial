@@ -835,7 +835,86 @@ ros2 launch py_test_pkg my_tb3_bringup.launch.py
 ```
 按下 Enter 後，Gazebo 模擬器、機器人實體、Rviz2 監控畫面，以及你的自訂節點，將會一口氣全部自動啟動！
 
----
 
 > **💡 進階提示：儲存 Rviz2 設定檔 (.rviz)**
 > 實務上，我們會在手動設定好 Rviz2 (加入 RobotModel、LaserScan 等) 之後，點擊左上角的 `File` ➔ `Save Config As`，存成一個 `.rviz` 檔案。接著在 Launch 檔的 Rviz 節點中加上 `arguments=['-d', '/絕對路徑/你的設定檔.rviz']`，以後連 Rviz2 的點擊設定都省下來了！
+
+---
+
+## 單元 5：導航與 SLAM 的核心命脈 —— TF2 坐標轉換 (Transform)
+
+### 🌳 5.1 核心觀念：什麼是 TF Tree (坐標樹)？
+
+在 ROS 2 中，所有的坐標系 (Frame) 都是透過「父子關係 (Parent-Child)」連結起來的，形成一棵樹狀結構。真實機器人的標準 TF Tree 通常會長這樣：
+
+```text
+map (世界地圖的絕對零點)
+ └── odom (里程計的起點)
+      └── base_footprint (機器人投影在地面的中心點)
+           └── base_link (機器人的實體底盤中心)
+                ├── wheel_left_link (左輪)
+                ├── wheel_right_link (右輪)
+                └── base_scan (光達感測器的位置)
+```
+
+**四大核心坐標系解析：**
+1. **`map`**：上帝視角。這是 SLAM 建出來的絕對地圖座標。
+2. **`odom`**：盲人視角。依靠輪子轉速推算出來的位置。因為輪胎會打滑，所以 `odom` 走久了會產生累積誤差（這時候就需要 SLAM 演算法去計算 `map` 到 `odom` 之間的修正值）。
+3. **`base_link`**：機器人本體。所有感測器和零件的安裝位置，都是以它為基準來測量的。
+4. **`base_scan`**：光達視角。雷射掃描到的障礙物距離，原點都在這裡。
+
+### 🔄 5.2 靜態轉換 (Static TF) vs. 動態轉換 (Dynamic TF)
+
+這棵坐標樹上的連結線，依照「會不會動」分為兩種：
+
+| 類型 | 定義與特性 | 真實範例 | 負責發布的節點 |
+| :--- | :--- | :--- | :--- |
+| **靜態轉換 (Static)** | 兩個部位的相對距離**永遠不變**。系統只需廣播一次，就能節省大量網路頻寬。 | `base_link` ➔ `base_scan` (光達是用螺絲鎖在底盤上的，不會亂跑) | `robot_state_publisher` (讀取 URDF 模型檔自動發布) |
+| **動態轉換 (Dynamic)** | 兩個部位的相對位置**會隨著時間與動作改變**，必須每秒高頻率發布 (通常 20Hz~50Hz)。 | `odom` ➔ `base_footprint` (機器人在空間中不斷移動) | 馬達控制器、里程計節點、或是 SLAM 演算法 |
+
+> **⚠️ 除錯金律：** TF Tree 是一個嚴格的樹狀圖。**每個子節點「只能有一個」父節點！** 如果你有兩個不同的演算法同時搶著發布 `base_link` 的位置，TF 樹就會發生錯亂，導致機器人在 Rviz2 裡面瘋狂瞬移跳動。
+
+---
+
+### 🛠️ 5.3 實作練習：用 TF2 工具透視機器人骨架
+
+ROS 2 內建了非常強大的命令列工具，讓你可以在不寫程式的情況下，看穿機器人內部的坐標關係。
+
+#### 步驟 1：啟動包含 TF 資訊的機器人
+為了有數據可以觀察，我們開啟第一個終端機，啟動 TB3 的 Gazebo 虛擬世界（這會自動啟動發布 TF 的 `robot_state_publisher`）：
+```bash
+ros2 launch turtlebot3_gazebo turtlebot3_world.launch.py
+```
+
+#### 步驟 2：生成 TF Tree 族譜圖 (PDF)
+當你接手一台陌生的機器人，第一件事就是印出它的 TF 族譜。打開第二個終端機，執行：
+```bash
+ros2 run tf2_tools view_frames
+```
+*系統會監聽目前的網路 5 秒鐘，並在你的當前目錄下生成一個 `frames.pdf` 檔案。*
+
+打開這張族譜圖！你可以清楚看到誰是父節點、誰是子節點，以及廣播頻率。*
+
+#### 步驟 3：使用 `tf2_echo` 監測即時相對距離
+有時候你需要知道「A 點相對於 B 點現在的精確座標」，這時候就可以使用 `tf2_echo` 工具。
+在終端機輸入（格式：`ros2 run tf2_ros tf2_echo <父節點> <子節點>`）：
+
+```bash
+ros2 run tf2_ros tf2_echo odom base_footprint
+```
+
+**數據解析：**
+終端機會以 1Hz 的頻率持續印出類似下方的資料：
+```text
+At time 1775838560.124701359
+- Translation: [0.000, 0.000, 0.000]
+- Rotation: in Quaternion [0.000, 0.000, 0.000, 1.000]
+```
+* **Translation (平移)**：這代表機器人目前相對於出發點 (`odom`) 的 X, Y, Z 距離 (公尺)。
+* **Rotation (旋轉)**：這代表機器人的朝向。ROS 2 底層使用「四元數 (Quaternion)」來避免萬向鎖問題，雖然人類很難直觀讀懂，但它是導航演算法運算角度的最佳格式。
+
+*(你可以再開一個終端機執行 `teleop_keyboard` 讓機器人移動，你會看到 Translation 的數值跟著即時改變！)*
+
+---
+
+到這裡，你已經掌握了 ROS 2 開發的四大基石：**通訊機制 (Topic/Service/Action)**、**架構設定 (Launch/Params)**、**模擬與視覺化 (Gazebo/Rviz2)**，以及**空間轉換 (TF2)**。
