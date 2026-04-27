@@ -77,7 +77,8 @@ Python 實作 Action 相當直觀，我們將使用 `rclpy.action` 模組。
 import time
 import rclpy
 from rclpy.node import Node
-from rclpy.action import ActionServer
+from rclpy.executors import MultiThreadedExecutor # ⭐ 新增：引入多執行緒執行器
+from rclpy.action import ActionServer, CancelResponse
 from my_interfaces.action import Countdown # 引入我們剛剛定義的 Action
 
 class CountdownActionServer(Node):
@@ -85,8 +86,18 @@ class CountdownActionServer(Node):
         super().__init__('countdown_server')
         # 建立 Action Server：(節點本身, 介面型態, 'Action名稱', 執行任務的回呼函式)
         self._action_server = ActionServer(
-            self, Countdown, 'countdown', self.execute_callback)
+            self,
+            Countdown,
+            'countdown',
+            execute_callback=self.execute_callback,
+            cancel_callback=self.cancel_callback) # ⭐ 新增：掛載取消回呼函式
         self.get_logger().info('倒數計時 Action Server 已啟動！')
+
+    def cancel_callback(self, goal_handle):
+        # 決定是否接受取消請求。這裡我們直接同意 (CancelResponse.ACCEPT)。
+        # 若不同意則回傳 CancelResponse.REJECT。
+        self.get_logger().info('收到取消請求，已同意。')
+        return CancelResponse.ACCEPT
 
     def execute_callback(self, goal_handle):
         self.get_logger().info(f'收到任務：開始倒數 {goal_handle.request.starting_count} 秒')
@@ -121,7 +132,16 @@ class CountdownActionServer(Node):
 def main(args=None):
     rclpy.init(args=args)
     server = CountdownActionServer()
-    rclpy.spin(server)
+    
+    # ⭐ 修改：使用 MultiThreadedExecutor，讓 Server 能在執行任務時同時處理「取消請求」
+    executor = MultiThreadedExecutor()
+    executor.add_node(server)
+    
+    try:
+        executor.spin()
+    except KeyboardInterrupt:
+        pass
+        
     rclpy.shutdown()
 
 if __name__ == '__main__':
@@ -139,8 +159,13 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from my_interfaces.action import Countdown
 
-# ⭐ 新增：引入 GoalStatus 來判斷最終任務狀態碼 (成功/失敗/取消)
+# ⭐ 新增：引入 GoalStatus 與執行相關函式
 from action_msgs.msg import GoalStatus 
+import threading
+import sys
+import termios
+import tty
+import select
 
 class CountdownActionClient(Node):
     def __init__(self):
@@ -178,21 +203,42 @@ class CountdownActionClient(Node):
         # ⭐ 將 goal_handle 保存下來，取消時需要用到它
         self._goal_handle = goal_handle 
         
-        # ⭐ 設定一個 2 秒後觸發的計時器，模擬使用者中途反悔
-        self._cancel_timer = self.create_timer(2.0, self.timer_cancel_callback)
+        # ⭐ 修改：不再使用計時器，改為啟動一個執行緒來監聽鍵盤
+        self.keyboard_thread = threading.Thread(target=self.wait_for_keyboard)
+        self.keyboard_thread.daemon = True
+        self.keyboard_thread.start()
 
         # 核心 3：任務被接受後，再次發起非同步請求，索取「最終結果 (Result)」
         self._get_result_future = goal_handle.get_result_async()
         self._get_result_future.add_done_callback(self.get_result_callback)
 
-    # ⭐ 實作：發送取消任務請求
-    def timer_cancel_callback(self):
-        self.get_logger().info('等太久了，發送取消任務請求！')
-        self._cancel_timer.cancel() # 停止計時器，避免重複發送
+    # ⭐ 實作：監聽鍵盤輸入 (空白鍵)
+    def wait_for_keyboard(self):
+        self.get_logger().info('=== 在此視窗按下「空白鍵 (Space)」可取消任務 ===')
         
-        # 呼叫 cancel_goal_async()，並設定 Callback 來聽取 Server 是否同意取消
-        cancel_future = self._goal_handle.cancel_goal_async()
-        cancel_future.add_done_callback(self.cancel_done_callback)
+        while rclpy.ok():
+            # 設定終端機為 Raw Mode 以便抓取單一按鍵
+            fd = sys.stdin.fileno()
+            old_settings = termios.tcgetattr(fd)
+            try:
+                tty.setraw(sys.stdin.fileno())
+                # 使用 select 監控 stdin，避免無限阻塞
+                rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
+                if rlist:
+                    key = sys.stdin.read(1)
+                    if key == ' ': # 如果按下的是空白鍵
+                        break
+            finally:
+                termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+            
+            # 若任務已經結束 (例如順利倒數完)，就退出執行緒
+            if self._goal_handle is None:
+                return
+
+        if rclpy.ok() and self._goal_handle:
+            self.get_logger().info('偵測到按下空白鍵，正在發送取消任務請求...')
+            cancel_future = self._goal_handle.cancel_goal_async()
+            cancel_future.add_done_callback(self.cancel_done_callback)
 
     # ⭐ 實作：確認 Server 對取消請求的回覆
     def cancel_done_callback(self, future):
@@ -219,13 +265,14 @@ class CountdownActionClient(Node):
             self.get_logger().info(f'任務最終狀態：順利完成 ({result_msg})')
         else:
             self.get_logger().info(f'任務異常結束，狀態碼：{status}')
-            
+        
+        self._goal_handle = None # 清除目標控制代碼，讓鍵盤執行緒知道可以結束了
         rclpy.shutdown() # 任務結束，關閉節點
 
 def main(args=None):
     rclpy.init(args=args)
     action_client = CountdownActionClient()
-    action_client.send_goal(5) # 要求倒數 5 秒
+    action_client.send_goal(10) # 要求倒數 5 秒
     rclpy.spin(action_client)  # 讓程式進入無限迴圈，保持活著監聽封包
 
 if __name__ == '__main__':
