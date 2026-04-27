@@ -1,0 +1,8 @@
+# 1. Goal (目標)：Client 要求 Server 倒數幾秒？
+int32 starting_count
+---
+# 2. Result (結果)：任務結束後，Server 回傳的最終狀態
+string message
+---
+# 3. Feedback (回饋)：執行期間，Server 不斷回報的進度
+int32 current_count
