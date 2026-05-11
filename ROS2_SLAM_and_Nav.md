@@ -166,4 +166,5 @@ if __name__ == '__main__':
     python3 patrol_bot.py
     ```
 
+**其他 Gazebo 內建地圖參考** : [https://emanual.robotis.com/docs/en/platform/turtlebot3/simulation/#gazebo-simulation]()
 ---
