@@ -107,7 +107,7 @@ ros2 launch turtlebot3_navigation2 navigation2.launch.py use_sim_time:=True map:
 
 ```python
 import rclpy
-from nav2_simple_commander.robot_navigator import BasicNavigator
+from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 from geometry_msgs.msg import PoseStamped
 
 def main():
@@ -142,11 +142,11 @@ def main():
 
     # 任務結束判斷
     result = navigator.getResult()
-    if result == navigator.TaskResult.SUCCEEDED:
+    if result == TaskResult.SUCCEEDED:
         print('成功抵達目的地！')
-    elif result == navigator.TaskResult.CANCELED:
+    elif result == TaskResult.CANCELED:
         print('任務被取消！')
-    elif result == navigator.TaskResult.FAILED:
+    elif result == TaskResult.FAILED:
         print('任務失敗，可能卡在死胡同了！')
 
     rclpy.shutdown()
