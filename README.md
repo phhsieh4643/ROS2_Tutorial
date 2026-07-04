@@ -12,6 +12,8 @@
     提供 ROS 2 安裝流程總覽與詳細步驟的簡報檔。
 *   **[樹莓派連線注意事項.md](樹莓派連線注意事項.md)**
     說明如何在 ROS 2 網路環境下連線與設定 Raspberry Pi 的重要注意事項。
+*   **[WSL_Turtlebot_通訊問題解決.md](WSL_Turtlebot_通訊問題解決.md)**
+    提供 WSL 與 TurtleBot 之間 ROS 2 訊息傳輸與網路通訊問題（如防火牆或網段設定）的標準排解流程。
 
 ### 2. 初階教學
 
@@ -49,3 +51,9 @@ source install/setup.bash
 ```
 
 **備註：** 使用 `--symlink-install` 參數，即可在修改 Python 程式碼或 Launch 檔案後直接套用變更，無需重新編譯。
+
+---
+
+## 參考資料
+
+*   [TurtleBot3 Overview - ROBOTIS e-Manual](https://docs.robotis.com/docs/systems/turtlebot3/overview/)
