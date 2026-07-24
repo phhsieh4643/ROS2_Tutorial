@@ -14,6 +14,10 @@
     說明如何在 ROS 2 網路環境下連線與設定 Raspberry Pi 的重要注意事項。
 *   **[WSL_Turtlebot_通訊問題解決.md](WSL_Turtlebot_通訊問題解決.md)**
     提供 WSL 與 TurtleBot 之間 ROS 2 訊息傳輸與網路通訊問題（如防火牆或網段設定）的標準排解流程。
+*   **[RealSense_ROS2_RPi4_Setup.md](RealSense_ROS2_RPi4_Setup.md)**
+    在 Raspberry Pi 4 上安裝 Intel RealSense D435i 及 ROS 2 Wrapper 的詳細步驟指南。
+*   **[Jetson AGX Orin 安裝 Intel RealSense D435i (librealsense SDK).md](Jetson%20AGX%20Orin%20%E5%AE%89%E8%A3%9D%20Intel%20RealSense%20D435i%20%28librealsense%20SDK%29.md)**
+    在 NVIDIA Jetson AGX Orin 上編譯與安裝 Intel RealSense D435i SDK (librealsense) 的教學。
 
 ### 2. 初階教學
 
@@ -57,3 +61,6 @@ source install/setup.bash
 ## 參考資料
 
 *   [TurtleBot3 Overview - ROBOTIS e-Manual](https://docs.robotis.com/docs/systems/turtlebot3/overview/)
+*   [Intel RealSense SDK 2.0 (librealsense)](https://github.com/realsenseai/librealsense)
+*   [librealsense Linux Installation](https://github.com/realsenseai/librealsense/blob/master/doc/installation.md)
+*   [librealsense Jetson Installation](https://github.com/realsenseai/librealsense/blob/master/doc/installation_jetson.md)
