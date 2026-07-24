@@ -18,6 +18,8 @@
     在 Raspberry Pi 4 上安裝 Intel RealSense D435i 及 ROS 2 Wrapper 的詳細步驟指南。
 *   **[Jetson AGX Orin 安裝 Intel RealSense D435i (librealsense SDK).md](Jetson%20AGX%20Orin%20%E5%AE%89%E8%A3%9D%20Intel%20RealSense%20D435i%20%28librealsense%20SDK%29.md)**
     在 NVIDIA Jetson AGX Orin 上編譯與安裝 Intel RealSense D435i SDK (librealsense) 的教學。
+*   **[RealSense_ROS2_realsense-ros_Setup.md](RealSense_ROS2_realsense-ros_Setup.md)**
+    在 Raspberry Pi 與 Jetson 等平台上安裝與測試 ROS 2 `realsense-ros` wrapper 的詳細教學。
 
 ### 2. 初階教學
 

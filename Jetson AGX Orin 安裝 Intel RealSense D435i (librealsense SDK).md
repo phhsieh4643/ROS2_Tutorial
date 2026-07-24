@@ -658,7 +658,7 @@ Depth + RGB + IMU
 
 即可進一步安裝：
 
-* realsense-ros2 wrapper
+* [realsense-ros2 wrapper 安裝與測試指南](RealSense_ROS2_realsense-ros_Setup.md)
 * RTAB-Map
 * ORB-SLAM3
 * RGB-D SLAM 系統
